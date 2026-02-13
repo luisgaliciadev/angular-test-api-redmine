@@ -4,24 +4,65 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 
 ## Development server
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+Run `npm start` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
 
-## Code scaffolding
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+## Run Docker Image for Redmine API on Mac
+Run in terminal
+```bash
+$ docker run -d \
+  --name redmine \
+  -p 3000:3000 \
+  redmine
+```
 
-## Build
+## Stop/Start Docker Image for Redmine API on Mac
+Stop
+```bash
+$ docker stop redmine
+```
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+Start
+```bash
+$ docker start redmine
+```
 
-## Running unit tests
+## Run Docker Image for Redmine API on Windows
+1.- Install Docker Desktop `https://www.docker.com/products/docker-desktop`
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+Enable:
+ - WSL2
+ - Ubuntu integration (if prompted)
 
-## Running end-to-end tests
+2.- Create docker-compose.yml 
+Create a folder and inside it create a file:
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+```yaml
+version: '3'
 
-## Further help
+services:
+  redmine:
+    image: redmine:5
+    ports:
+      - "3000:3000"
+    restart: always
+    environment:
+      REDMINE_DB_MYSQL: db
+      REDMINE_DB_PASSWORD: example
+    depends_on:
+      - db
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+  db:
+    image: mysql:8
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: example
+      MYSQL_DATABASE: redmine
+```
+
+3.- Start as a service
+```bash
+$ docker compose up -d
+```
+
+Docker will keep it running as a service and it will be available at `http://localhost:3000`
