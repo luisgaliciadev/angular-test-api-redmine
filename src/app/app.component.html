@@ -209,6 +209,81 @@
   </section>
 
   <section class="card">
+    <h2>Campos personalizados del sistema</h2>
+    <p>Consulta TODOS los campos personalizados (custom fields) configurados en Redmine.</p>
+    
+    <button class="secondary" (click)="fetchAllCustomFields()" [disabled]="isLoadingAllCustomFields">
+      {{ isLoadingAllCustomFields ? "Cargando..." : "🔧 Listar todos los campos personalizados" }}
+    </button>
+
+    <div class="messages">
+      <p class="error" *ngIf="errorMessage && !allCustomFields.length">{{ errorMessage }}</p>
+      <p class="success" *ngIf="successMessage">{{ successMessage }}</p>
+    </div>
+
+    <div class="list" *ngIf="allCustomFields.length">
+      <article class="custom-field" *ngFor="let field of allCustomFields">
+        <div class="custom-field__header">
+          <strong>{{ field.name }}</strong>
+          <div class="custom-field__badges">
+            <span class="badge">ID: {{ field.id }}</span>
+            <span class="badge badge--type">{{ field.field_format }}</span>
+            <span class="badge badge--required" *ngIf="field.is_required">Requerido</span>
+            <span class="badge badge--multiple" *ngIf="field.multiple">Múltiple</span>
+          </div>
+        </div>
+        <div class="custom-field__details">
+          <span *ngIf="field.default_value"><strong>Valor por defecto:</strong> {{ field.default_value }}</span>
+          <span *ngIf="field.possible_values && field.possible_values.length > 0">
+            <strong>Valores posibles:</strong> {{ field.possible_values.length }} opciones
+          </span>
+        </div>
+      </article>
+    </div>
+
+    <div class="no-results" *ngIf="!isLoadingAllCustomFields && allCustomFields.length === 0 && successMessage">
+      <p>📭 {{ successMessage }}</p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Campos personalizados del proyecto</h2>
+    <p>Consulta los campos personalizados (custom fields) del proyecto seleccionado. <strong>Debes ingresar un Project ID primero.</strong></p>
+    
+    <button class="secondary" (click)="fetchCustomFields()" [disabled]="isLoadingCustomFields || !projectId">
+      {{ isLoadingCustomFields ? "Cargando..." : "🔧 Listar campos personalizados" }}
+    </button>
+
+    <div class="messages">
+      <p class="error" *ngIf="errorMessage && !customFields.length">{{ errorMessage }}</p>
+      <p class="success" *ngIf="successMessage">{{ successMessage }}</p>
+    </div>
+
+    <div class="list" *ngIf="customFields.length">
+      <article class="custom-field" *ngFor="let field of customFields">
+        <div class="custom-field__header">
+          <strong>{{ field.name }}</strong>
+          <div class="custom-field__badges">
+            <span class="badge">ID: {{ field.id }}</span>
+            <span class="badge badge--type">{{ field.field_format }}</span>
+            <span class="badge badge--required" *ngIf="field.is_required">Requerido</span>
+          </div>
+        </div>
+        <div class="custom-field__details">
+          <span *ngIf="field.default_value"><strong>Valor por defecto:</strong> {{ field.default_value }}</span>
+          <span *ngIf="field.possible_values && field.possible_values.length > 0">
+            <strong>Valores posibles:</strong> {{ field.possible_values.length }} opciones
+          </span>
+        </div>
+      </article>
+    </div>
+
+    <div class="no-results" *ngIf="!isLoadingCustomFields && customFields.length === 0 && successMessage">
+      <p>📭 {{ successMessage }}</p>
+    </div>
+  </section>
+
+  <section class="card">
     <h2>Registrar ticket</h2>
     <div class="grid">
       <label>
@@ -277,6 +352,137 @@
           name="description"
         ></textarea>
       </label>
+    </div>
+
+    <!-- Campos personalizados -->
+    <div class="custom-fields-section" *ngIf="customFields.length > 0">
+      <h3>Campos personalizados</h3>
+      <div class="grid">
+        <ng-container *ngFor="let field of customFields">
+          <!-- Campo de texto -->
+          <label *ngIf="field.field_format === 'string' || field.field_format === 'text'" 
+                 [class.span-2]="field.field_format === 'text'">
+            {{ field.name }}{{ field.is_required ? ' *' : '' }}
+            <input 
+              *ngIf="field.field_format === 'string'"
+              type="text"
+              [(ngModel)]="customFieldValues[field.id]"
+              [name]="'custom_field_' + field.id"
+              [placeholder]="field.default_value || ''"
+            />
+            <textarea 
+              *ngIf="field.field_format === 'text'"
+              rows="3"
+              [(ngModel)]="customFieldValues[field.id]"
+              [name]="'custom_field_' + field.id"
+              [placeholder]="field.default_value || ''"
+            ></textarea>
+          </label>
+
+          <!-- Campo numérico -->
+          <label *ngIf="field.field_format === 'int' || field.field_format === 'float'">
+            {{ field.name }}{{ field.is_required ? ' *' : '' }}
+            <input 
+              [type]="field.field_format === 'int' ? 'number' : 'text'"
+              [(ngModel)]="customFieldValues[field.id]"
+              [name]="'custom_field_' + field.id"
+              [placeholder]="field.default_value || ''"
+              [step]="field.field_format === 'float' ? '0.01' : '1'"
+            />
+          </label>
+
+          <!-- Campo de lista (select) -->
+          <label *ngIf="field.field_format === 'list' && field.possible_values">
+            {{ field.name }}{{ field.is_required ? ' *' : '' }}
+            <select 
+              [(ngModel)]="customFieldValues[field.id]"
+              [name]="'custom_field_' + field.id"
+            >
+              <option value="">-- Selecciona una opción --</option>
+              <option *ngFor="let option of field.possible_values" [value]="option.value || option.label">
+                {{ option.label || option.value }}
+              </option>
+            </select>
+          </label>
+
+          <!-- Campo booleano (checkbox) -->
+          <label *ngIf="field.field_format === 'bool'" class="checkbox-label">
+            <input 
+              type="checkbox"
+              [(ngModel)]="customFieldValues[field.id]"
+              [name]="'custom_field_' + field.id"
+            />
+            {{ field.name }}{{ field.is_required ? ' *' : '' }}
+          </label>
+
+          <!-- Campo de fecha -->
+          <label *ngIf="field.field_format === 'date'">
+            {{ field.name }}{{ field.is_required ? ' *' : '' }}
+            <input 
+              type="date"
+              [(ngModel)]="customFieldValues[field.id]"
+              [name]="'custom_field_' + field.id"
+            />
+          </label>
+
+          <!-- Campo de enlace (link/url) -->
+          <label *ngIf="field.field_format === 'link'">
+            {{ field.name }}{{ field.is_required ? ' *' : '' }}
+            <input 
+              type="url"
+              [(ngModel)]="customFieldValues[field.id]"
+              [name]="'custom_field_' + field.id"
+              [placeholder]="field.default_value || 'https://'"
+            />
+          </label>
+        </ng-container>
+      </div>
+      <small class="help-text">
+        💡 Haz clic en "🔧 Listar campos personalizados" para cargar los campos del proyecto
+      </small>
+    </div>
+
+    <!-- Campos personalizados manuales -->
+    <div class="manual-custom-fields-section">
+      <h3>Agregar campos personalizados manualmente</h3>
+      <p class="section-description">
+        Si conoces el ID del campo personalizado, puedes agregarlo manualmente aquí.
+      </p>
+      
+      <div class="manual-fields-list" *ngIf="manualCustomFields.length > 0">
+        <div class="manual-field-row" *ngFor="let field of manualCustomFields; let i = index">
+          <input
+            type="number"
+            [(ngModel)]="field.id"
+            placeholder="ID del campo"
+            [name]="'manual_field_id_' + i"
+            class="field-id-input"
+          />
+          <input
+            type="text"
+            [(ngModel)]="field.value"
+            placeholder="Valor del campo"
+            [name]="'manual_field_value_' + i"
+            class="field-value-input"
+          />
+          <button
+            type="button"
+            class="remove-field-btn"
+            (click)="removeManualCustomField(i)"
+            title="Eliminar campo"
+          >
+            ❌
+          </button>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        class="add-field-btn"
+        (click)="addManualCustomField()"
+      >
+        ➕ Agregar campo personalizado
+      </button>
     </div>
 
     <div class="file-upload-section">
@@ -389,6 +595,50 @@
             max="100"
           />
         </label>
+      </div>
+
+      <!-- Filtros por custom fields -->
+      <div class="custom-field-filters">
+        <h4>Filtrar por campos personalizados</h4>
+        <p class="filter-description">
+          Agrega filtros por custom fields usando el formato <code>cf_X</code>. 
+          <small>Nota: El campo debe estar configurado como "usado como filtro" en Redmine.</small>
+        </p>
+        
+        <div class="manual-fields-list" *ngIf="customFieldFilters.length > 0">
+          <div class="manual-field-row" *ngFor="let filter of customFieldFilters; let i = index">
+            <input
+              type="number"
+              [(ngModel)]="filter.id"
+              placeholder="ID del campo"
+              [name]="'filter_cf_id_' + i"
+              class="field-id-input"
+            />
+            <input
+              type="text"
+              [(ngModel)]="filter.value"
+              placeholder="Valor (usa ~ para buscar substring, ej: ~texto)"
+              [name]="'filter_cf_value_' + i"
+              class="field-value-input"
+            />
+            <button
+              type="button"
+              class="remove-field-btn"
+              (click)="removeCustomFieldFilter(i)"
+              title="Eliminar filtro"
+            >
+              ❌
+            </button>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          class="add-filter-btn"
+          (click)="addCustomFieldFilter()"
+        >
+          ➕ Agregar filtro de custom field
+        </button>
       </div>
     </div>
 
@@ -540,6 +790,18 @@
         <h3>Descripción</h3>
         <div class="description-box">
           {{ selectedIssue.description }}
+        </div>
+      </section>
+
+      <!-- Campos personalizados -->
+      <section class="modal-section" *ngIf="selectedIssue.custom_fields && selectedIssue.custom_fields.length > 0">
+        <h3>Campos personalizados ({{ selectedIssue.custom_fields.length }})</h3>
+        <div class="custom-fields-display">
+          <div class="custom-field-item" *ngFor="let field of selectedIssue.custom_fields">
+            <strong>{{ field.name }}:</strong>
+            <span *ngIf="!isArrayValue(field.value)">{{ field.value || '(vacío)' }}</span>
+            <span *ngIf="isArrayValue(field.value)">{{ formatArrayValue(field.value) }}</span>
+          </div>
         </div>
       </section>
 

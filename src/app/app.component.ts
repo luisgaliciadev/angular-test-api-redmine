@@ -39,6 +39,12 @@ interface RedmineIssue {
   watchers?: RedmineUser[];
   children?: RedmineIssue[];
   relations?: RedmineRelation[];
+  custom_fields?: Array<{
+    id: number;
+    name: string;
+    value: string | string[];
+    multiple?: boolean;
+  }>;
 }
 
 interface RedmineIssuesResponse {
@@ -155,6 +161,30 @@ interface RedmineUpload {
   description?: string;
 }
 
+interface RedmineCustomField {
+  id: number;
+  name: string;
+  field_format: string;
+  is_required?: boolean;
+  default_value?: string;
+  possible_values?: Array<{ label: string; value: string }>;
+  multiple?: boolean;
+}
+
+interface RedmineProjectWithCustomFields {
+  project: {
+    id: number;
+    name: string;
+    identifier: string;
+    description?: string;
+    issue_custom_fields?: RedmineCustomField[];
+  };
+}
+
+interface RedmineCustomFieldsResponse {
+  custom_fields: RedmineCustomField[];
+}
+
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -186,6 +216,7 @@ export class AppComponent {
   filterStatusId = '';
   filterProjectId = '';
   limit = 25;
+  customFieldFilters: Array<{id: string; value: string}> = [];
 
   issues: RedmineIssue[] = [];
   projects: RedmineProject[] = [];
@@ -193,6 +224,10 @@ export class AppComponent {
   priorities: RedminePriority[] = [];
   categories: RedmineCategory[] = [];
   trackers: RedmineTracker[] = [];
+  customFields: RedmineCustomField[] = [];
+  allCustomFields: RedmineCustomField[] = [];
+  customFieldValues: Record<number, any> = {};
+  manualCustomFields: Array<{id: string; value: string}> = [];
   isCreating = false;
   isLoading = false;
   isLoadingProjects = false;
@@ -200,6 +235,8 @@ export class AppComponent {
   isLoadingPriorities = false;
   isLoadingCategories = false;
   isLoadingTrackers = false;
+  isLoadingCustomFields = false;
+  isLoadingAllCustomFields = false;
   isUploadingFiles = false;
   isLoadingIssueDetail = false;
   isTesting = false;
@@ -287,6 +324,32 @@ export class AppComponent {
       }));
     }
 
+    // Agregar custom fields si existen valores
+    const customFieldsArray = Object.keys(this.customFieldValues)
+      .filter(key => {
+        const value = this.customFieldValues[parseInt(key)];
+        return value !== undefined && value !== '' && value !== null;
+      })
+      .map(key => ({
+        id: parseInt(key),
+        value: this.customFieldValues[parseInt(key)]
+      }));
+    
+    // Agregar custom fields manuales
+    const manualFieldsArray = this.manualCustomFields
+      .filter(field => field.id && field.value)
+      .map(field => ({
+        id: parseInt(field.id),
+        value: field.value
+      }));
+    
+    // Combinar ambos arrays de custom fields
+    const allCustomFieldsArray = [...customFieldsArray, ...manualFieldsArray];
+    
+    if (allCustomFieldsArray.length > 0) {
+      issuePayload['custom_fields'] = allCustomFieldsArray;
+    }
+
     this.isCreating = true;
     this.http
       .post(url, { issue: issuePayload }, { headers: this.buildHeaders() })
@@ -299,6 +362,8 @@ export class AppComponent {
           this.priorityId = '';
           this.categoryId = '';
           this.trackerId = '';
+          this.customFieldValues = {};
+          this.manualCustomFields = [];
           this.selectedFiles = [];
           this.uploadedFiles = [];
         },
@@ -337,6 +402,13 @@ export class AppComponent {
     if (this.filterProjectId) {
       params = params.set('project_id', this.filterProjectId);
     }
+
+    // Filtrar por custom fields
+    this.customFieldFilters.forEach(filter => {
+      if (filter.id && filter.value) {
+        params = params.set(`cf_${filter.id}`, filter.value);
+      }
+    });
 
     this.isLoading = true;
     this.http
@@ -500,6 +572,74 @@ export class AppComponent {
       });
   }
 
+  fetchCustomFields(): void {
+    this.resetMessages();
+    if (!this.baseUrl || !this.apiKey) {
+      this.errorMessage = 'Completa baseUrl y apiKey.';
+      return;
+    }
+
+    if (!this.projectId) {
+      this.errorMessage = 'Debes ingresar un Project ID primero.';
+      return;
+    }
+
+    const url = `${this.normalizeBaseUrl(this.baseUrl)}/projects/${this.projectId}.json`;
+    const params = new HttpParams().set('include', 'issue_custom_fields');
+
+    this.isLoadingCustomFields = true;
+    this.http
+      .get<RedmineProjectWithCustomFields>(url, { headers: this.buildHeaders(), params })
+      .subscribe({
+        next: (response) => {
+          this.customFields = response.project.issue_custom_fields || [];
+          if (this.customFields.length === 0) {
+            this.successMessage = 'El proyecto no tiene campos personalizados configurados.';
+          } else {
+            this.successMessage = `Se encontraron ${this.customFields.length} campos personalizados.`;
+          }
+        },
+        error: (error) => {
+          this.isLoadingCustomFields = false;
+          this.errorMessage = this.toErrorMessage(error);
+        },
+        complete: () => {
+          this.isLoadingCustomFields = false;
+        },
+      });
+  }
+
+  fetchAllCustomFields(): void {
+    this.resetMessages();
+    if (!this.baseUrl || !this.apiKey) {
+      this.errorMessage = 'Completa baseUrl y apiKey.';
+      return;
+    }
+
+    const url = `${this.normalizeBaseUrl(this.baseUrl)}/custom_fields.json`;
+
+    this.isLoadingAllCustomFields = true;
+    this.http
+      .get<RedmineCustomFieldsResponse>(url, { headers: this.buildHeaders() })
+      .subscribe({
+        next: (response) => {
+          this.allCustomFields = response.custom_fields || [];
+          if (this.allCustomFields.length === 0) {
+            this.successMessage = 'No se encontraron campos personalizados en el sistema.';
+          } else {
+            this.successMessage = `Se encontraron ${this.allCustomFields.length} campos personalizados en total.`;
+          }
+        },
+        error: (error) => {
+          this.isLoadingAllCustomFields = false;
+          this.errorMessage = this.toErrorMessage(error);
+        },
+        complete: () => {
+          this.isLoadingAllCustomFields = false;
+        },
+      });
+  }
+
   onFileSelect(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
@@ -609,6 +749,31 @@ export class AppComponent {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  }
+
+  isArrayValue(value: any): boolean {
+    return Array.isArray(value);
+  }
+
+  formatArrayValue(value: any): string {
+    if (!Array.isArray(value)) return String(value);
+    return value.join(', ');
+  }
+
+  addManualCustomField(): void {
+    this.manualCustomFields.push({ id: '', value: '' });
+  }
+
+  removeManualCustomField(index: number): void {
+    this.manualCustomFields.splice(index, 1);
+  }
+
+  addCustomFieldFilter(): void {
+    this.customFieldFilters.push({ id: '', value: '' });
+  }
+
+  removeCustomFieldFilter(index: number): void {
+    this.customFieldFilters.splice(index, 1);
   }
 
   private buildHeaders(): HttpHeaders {
