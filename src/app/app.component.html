@@ -278,6 +278,48 @@
         ></textarea>
       </label>
     </div>
+
+    <div class="file-upload-section">
+      <h3>Adjuntar archivos (opcional)</h3>
+      <div class="file-input-wrapper">
+        <input
+          type="file"
+          (change)="onFileSelect($event)"
+          multiple
+          #fileInput
+          id="fileInput"
+        />
+        <label for="fileInput" class="file-label">
+          📎 Seleccionar archivos
+        </label>
+        <span class="file-count" *ngIf="selectedFiles.length > 0">
+          {{ selectedFiles.length }} archivo(s) seleccionado(s)
+        </span>
+      </div>
+
+      <button 
+        class="secondary" 
+        (click)="uploadFiles()" 
+        [disabled]="isUploadingFiles || selectedFiles.length === 0"
+        *ngIf="selectedFiles.length > 0 && uploadedFiles.length === 0"
+      >
+        {{ isUploadingFiles ? "Subiendo..." : "📤 Subir archivos" }}
+      </button>
+
+      <div class="uploaded-files" *ngIf="uploadedFiles.length > 0">
+        <h4>Archivos listos para adjuntar:</h4>
+        <div class="file-list">
+          <div class="file-item" *ngFor="let file of uploadedFiles; let i = index">
+            <span class="file-name">📄 {{ file.filename }}</span>
+            <span class="file-type">{{ file.content_type }}</span>
+            <button class="remove-btn" (click)="removeUploadedFile(i)" title="Remover archivo">
+              ❌
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <button class="primary" (click)="createIssue()" [disabled]="isCreating">
       {{ isCreating ? "Creando..." : "Crear ticket" }}
     </button>

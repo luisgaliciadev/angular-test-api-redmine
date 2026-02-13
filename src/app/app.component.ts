@@ -88,6 +88,20 @@ interface RedmineTrackersResponse {
   trackers: RedmineTracker[];
 }
 
+interface RedmineUploadResponse {
+  upload: {
+    id: number;
+    token: string;
+  };
+}
+
+interface RedmineUpload {
+  token: string;
+  filename: string;
+  content_type: string;
+  description?: string;
+}
+
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -106,6 +120,9 @@ export class AppComponent {
   priorityId = '';
   categoryId = '';
   trackerId = '';
+  
+  selectedFiles: File[] = [];
+  uploadedFiles: RedmineUpload[] = [];
 
   // Filtros de consulta
   filterType: 'author' | 'assigned' | 'all' = 'author';
@@ -127,6 +144,7 @@ export class AppComponent {
   isLoadingPriorities = false;
   isLoadingCategories = false;
   isLoadingTrackers = false;
+  isUploadingFiles = false;
   isTesting = false;
   errorMessage = '';
   successMessage = '';
@@ -203,6 +221,15 @@ export class AppComponent {
       issuePayload['tracker_id'] = this.trackerId;
     }
 
+    if (this.uploadedFiles.length > 0) {
+      issuePayload['uploads'] = this.uploadedFiles.map(file => ({
+        token: file.token,
+        filename: file.filename,
+        content_type: file.content_type,
+        description: file.description
+      }));
+    }
+
     this.isCreating = true;
     this.http
       .post(url, { issue: issuePayload }, { headers: this.buildHeaders() })
@@ -215,6 +242,8 @@ export class AppComponent {
           this.priorityId = '';
           this.categoryId = '';
           this.trackerId = '';
+          this.selectedFiles = [];
+          this.uploadedFiles = [];
         },
         error: (error) => {
           this.errorMessage = this.toErrorMessage(error);
@@ -412,6 +441,75 @@ export class AppComponent {
           this.isLoadingTrackers = false;
         },
       });
+  }
+
+  onFileSelect(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.selectedFiles = Array.from(input.files);
+      this.uploadedFiles = [];
+      this.resetMessages();
+    }
+  }
+
+  uploadFiles(): void {
+    this.resetMessages();
+    if (!this.baseUrl || !this.apiKey) {
+      this.errorMessage = 'Completa baseUrl y apiKey.';
+      return;
+    }
+
+    if (this.selectedFiles.length === 0) {
+      this.errorMessage = 'Selecciona al menos un archivo.';
+      return;
+    }
+
+    this.isUploadingFiles = true;
+    this.uploadedFiles = [];
+    let uploadedCount = 0;
+
+    this.selectedFiles.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const arrayBuffer = reader.result as ArrayBuffer;
+        const url = `${this.normalizeBaseUrl(this.baseUrl)}/uploads.json`;
+        
+        const headers = new HttpHeaders({
+          'Content-Type': 'application/octet-stream',
+          'X-Redmine-API-Key': this.apiKey,
+        });
+
+        this.http
+          .post<RedmineUploadResponse>(url, arrayBuffer, { headers })
+          .subscribe({
+            next: (response) => {
+              this.uploadedFiles.push({
+                token: response.upload.token,
+                filename: file.name,
+                content_type: file.type || 'application/octet-stream',
+              });
+              uploadedCount++;
+
+              if (uploadedCount === this.selectedFiles.length) {
+                this.isUploadingFiles = false;
+                this.successMessage = `${uploadedCount} archivo(s) subido(s) correctamente.`;
+              }
+            },
+            error: (error) => {
+              this.isUploadingFiles = false;
+              this.errorMessage = `Error al subir ${file.name}: ${this.toErrorMessage(error)}`;
+            },
+          });
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  removeUploadedFile(index: number): void {
+    this.uploadedFiles.splice(index, 1);
+    if (this.uploadedFiles.length === 0) {
+      this.selectedFiles = [];
+    }
   }
 
   private buildHeaders(): HttpHeaders {
