@@ -149,6 +149,36 @@
   </section>
 
   <section class="card">
+    <h2>Categorías del proyecto</h2>
+    <p>Consulta las categorías disponibles del proyecto seleccionado. <strong>Debes ingresar un Project ID primero.</strong></p>
+    
+    <button class="secondary" (click)="fetchCategories()" [disabled]="isLoadingCategories || !projectId">
+      {{ isLoadingCategories ? "Cargando..." : "📋 Listar categorías" }}
+    </button>
+
+    <div class="messages">
+      <p class="error" *ngIf="errorMessage && !categories.length">{{ errorMessage }}</p>
+      <p class="success" *ngIf="successMessage">{{ successMessage }}</p>
+    </div>
+
+    <div class="list" *ngIf="categories.length">
+      <article class="category" *ngFor="let category of categories">
+        <div class="category__header">
+          <strong>{{ category.name }}</strong>
+          <span class="badge">ID: {{ category.id }}</span>
+        </div>
+        <div class="category__details" *ngIf="category.assigned_to">
+          <span><strong>Asignado a:</strong> {{ category.assigned_to.name }}</span>
+        </div>
+      </article>
+    </div>
+
+    <div class="no-results" *ngIf="!isLoadingCategories && categories.length === 0 && successMessage">
+      <p>📭 {{ successMessage }}</p>
+    </div>
+  </section>
+
+  <section class="card">
     <h2>Registrar ticket</h2>
     <div class="grid">
       <label>
@@ -178,6 +208,16 @@
           </option>
         </select>
         <small *ngIf="!priorities.length">Haz clic en "⚡ Listar prioridades" para cargar las opciones</small>
+      </label>
+      <label>
+        Categoría (opcional)
+        <select [(ngModel)]="categoryId" name="categoryId">
+          <option value="">-- Selecciona una categoría --</option>
+          <option *ngFor="let category of categories" [value]="category.id">
+            {{ category.name }}
+          </option>
+        </select>
+        <small *ngIf="!categories.length">Ingresa el Project ID y haz clic en "📋 Listar categorías"</small>
       </label>
       <label class="span-2">
         Subject

@@ -67,6 +67,17 @@ interface RedminePrioritiesResponse {
   issue_priorities: RedminePriority[];
 }
 
+interface RedmineCategory {
+  id: number;
+  name: string;
+  project?: { id: number; name: string };
+  assigned_to?: RedmineUser;
+}
+
+interface RedmineCategoriesResponse {
+  issue_categories: RedmineCategory[];
+}
+
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -83,6 +94,7 @@ export class AppComponent {
   description = '';
   assignedToId = '';
   priorityId = '';
+  categoryId = '';
 
   // Filtros de consulta
   filterType: 'author' | 'assigned' | 'all' = 'author';
@@ -95,11 +107,13 @@ export class AppComponent {
   projects: RedmineProject[] = [];
   users: RedmineUser[] = [];
   priorities: RedminePriority[] = [];
+  categories: RedmineCategory[] = [];
   isCreating = false;
   isLoading = false;
   isLoadingProjects = false;
   isLoadingUsers = false;
   isLoadingPriorities = false;
+  isLoadingCategories = false;
   isTesting = false;
   errorMessage = '';
   successMessage = '';
@@ -168,6 +182,10 @@ export class AppComponent {
       issuePayload['priority_id'] = this.priorityId;
     }
 
+    if (this.categoryId) {
+      issuePayload['category_id'] = this.categoryId;
+    }
+
     this.isCreating = true;
     this.http
       .post(url, { issue: issuePayload }, { headers: this.buildHeaders() })
@@ -178,6 +196,7 @@ export class AppComponent {
           this.description = '';
           this.assignedToId = '';
           this.priorityId = '';
+          this.categoryId = '';
         },
         error: (error) => {
           this.errorMessage = this.toErrorMessage(error);
@@ -310,6 +329,42 @@ export class AppComponent {
         },
         complete: () => {
           this.isLoadingPriorities = false;
+        },
+      });
+  }
+
+  fetchCategories(): void {
+    this.resetMessages();
+    if (!this.baseUrl || !this.apiKey) {
+      this.errorMessage = 'Completa baseUrl y apiKey.';
+      return;
+    }
+
+    if (!this.projectId) {
+      this.errorMessage = 'Debes seleccionar un proyecto primero para cargar sus categorías.';
+      return;
+    }
+
+    const url = `${this.normalizeBaseUrl(this.baseUrl)}/projects/${this.projectId}/issue_categories.json`;
+
+    this.isLoadingCategories = true;
+    this.http
+      .get<RedmineCategoriesResponse>(url, { headers: this.buildHeaders() })
+      .subscribe({
+        next: (response) => {
+          this.categories = response.issue_categories || [];
+          if (this.categories.length === 0) {
+            this.successMessage = 'El proyecto no tiene categorías configuradas.';
+          } else {
+            this.successMessage = `Se encontraron ${this.categories.length} categorías.`;
+          }
+        },
+        error: (error) => {
+          this.isLoadingCategories = false;
+          this.errorMessage = this.toErrorMessage(error);
+        },
+        complete: () => {
+          this.isLoadingCategories = false;
         },
       });
   }
