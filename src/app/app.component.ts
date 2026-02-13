@@ -78,6 +78,16 @@ interface RedmineCategoriesResponse {
   issue_categories: RedmineCategory[];
 }
 
+interface RedmineTracker {
+  id: number;
+  name: string;
+  default_status?: { id: number; name: string };
+}
+
+interface RedmineTrackersResponse {
+  trackers: RedmineTracker[];
+}
+
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -95,6 +105,7 @@ export class AppComponent {
   assignedToId = '';
   priorityId = '';
   categoryId = '';
+  trackerId = '';
 
   // Filtros de consulta
   filterType: 'author' | 'assigned' | 'all' = 'author';
@@ -108,12 +119,14 @@ export class AppComponent {
   users: RedmineUser[] = [];
   priorities: RedminePriority[] = [];
   categories: RedmineCategory[] = [];
+  trackers: RedmineTracker[] = [];
   isCreating = false;
   isLoading = false;
   isLoadingProjects = false;
   isLoadingUsers = false;
   isLoadingPriorities = false;
   isLoadingCategories = false;
+  isLoadingTrackers = false;
   isTesting = false;
   errorMessage = '';
   successMessage = '';
@@ -186,6 +199,10 @@ export class AppComponent {
       issuePayload['category_id'] = this.categoryId;
     }
 
+    if (this.trackerId) {
+      issuePayload['tracker_id'] = this.trackerId;
+    }
+
     this.isCreating = true;
     this.http
       .post(url, { issue: issuePayload }, { headers: this.buildHeaders() })
@@ -197,6 +214,7 @@ export class AppComponent {
           this.assignedToId = '';
           this.priorityId = '';
           this.categoryId = '';
+          this.trackerId = '';
         },
         error: (error) => {
           this.errorMessage = this.toErrorMessage(error);
@@ -365,6 +383,33 @@ export class AppComponent {
         },
         complete: () => {
           this.isLoadingCategories = false;
+        },
+      });
+  }
+
+  fetchTrackers(): void {
+    this.resetMessages();
+    if (!this.baseUrl || !this.apiKey) {
+      this.errorMessage = 'Completa baseUrl y apiKey.';
+      return;
+    }
+
+    const url = `${this.normalizeBaseUrl(this.baseUrl)}/trackers.json`;
+
+    this.isLoadingTrackers = true;
+    this.http
+      .get<RedmineTrackersResponse>(url, { headers: this.buildHeaders() })
+      .subscribe({
+        next: (response) => {
+          this.trackers = response.trackers || [];
+          this.successMessage = `Se encontraron ${this.trackers.length} trackers.`;
+        },
+        error: (error) => {
+          this.isLoadingTrackers = false;
+          this.errorMessage = this.toErrorMessage(error);
+        },
+        complete: () => {
+          this.isLoadingTrackers = false;
         },
       });
   }

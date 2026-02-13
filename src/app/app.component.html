@@ -179,6 +179,36 @@
   </section>
 
   <section class="card">
+    <h2>Trackers disponibles</h2>
+    <p>Consulta los tipos de issue (Bug, Feature, Support, etc.) disponibles en Redmine.</p>
+    
+    <button class="secondary" (click)="fetchTrackers()" [disabled]="isLoadingTrackers">
+      {{ isLoadingTrackers ? "Cargando..." : "🎯 Listar trackers" }}
+    </button>
+
+    <div class="messages">
+      <p class="error" *ngIf="errorMessage && !trackers.length">{{ errorMessage }}</p>
+      <p class="success" *ngIf="successMessage && trackers.length">{{ successMessage }}</p>
+    </div>
+
+    <div class="list" *ngIf="trackers.length">
+      <article class="tracker" *ngFor="let tracker of trackers">
+        <div class="tracker__header">
+          <strong>{{ tracker.name }}</strong>
+          <span class="badge">ID: {{ tracker.id }}</span>
+        </div>
+        <div class="tracker__details" *ngIf="tracker.default_status">
+          <span><strong>Estado por defecto:</strong> {{ tracker.default_status.name }}</span>
+        </div>
+      </article>
+    </div>
+
+    <div class="no-results" *ngIf="!isLoadingTrackers && trackers.length === 0 && successMessage">
+      <p>📭 No se encontraron trackers disponibles.</p>
+    </div>
+  </section>
+
+  <section class="card">
     <h2>Registrar ticket</h2>
     <div class="grid">
       <label>
@@ -218,6 +248,16 @@
           </option>
         </select>
         <small *ngIf="!categories.length">Ingresa el Project ID y haz clic en "📋 Listar categorías"</small>
+      </label>
+      <label>
+        Tracker (opcional)
+        <select [(ngModel)]="trackerId" name="trackerId">
+          <option value="">-- Selecciona un tracker --</option>
+          <option *ngFor="let tracker of trackers" [value]="tracker.id">
+            {{ tracker.name }}
+          </option>
+        </select>
+        <small *ngIf="!trackers.length">Haz clic en "🎯 Listar trackers" para cargar las opciones</small>
       </label>
       <label class="span-2">
         Subject
