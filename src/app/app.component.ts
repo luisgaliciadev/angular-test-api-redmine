@@ -23,6 +23,22 @@ interface RedmineIssue {
   assigned_to?: RedmineUser;
   created_on?: string;
   updated_on?: string;
+  tracker?: { id: number; name: string };
+  priority?: { id: number; name: string };
+  project?: { id: number; name: string };
+  category?: { id: number; name: string };
+  fixed_version?: { id: number; name: string };
+  parent?: { id: number };
+  estimated_hours?: number;
+  spent_hours?: number;
+  done_ratio?: number;
+  start_date?: string;
+  due_date?: string;
+  attachments?: RedmineAttachment[];
+  journals?: RedmineJournal[];
+  watchers?: RedmineUser[];
+  children?: RedmineIssue[];
+  relations?: RedmineRelation[];
 }
 
 interface RedmineIssuesResponse {
@@ -30,6 +46,43 @@ interface RedmineIssuesResponse {
   total_count: number;
   offset: number;
   limit: number;
+}
+
+interface RedmineIssueResponse {
+  issue: RedmineIssue;
+}
+
+interface RedmineAttachment {
+  id: number;
+  filename: string;
+  filesize: number;
+  content_type: string;
+  description?: string;
+  content_url: string;
+  author: RedmineUser;
+  created_on: string;
+}
+
+interface RedmineJournal {
+  id: number;
+  user: RedmineUser;
+  notes?: string;
+  created_on: string;
+  private_notes?: boolean;
+  details?: Array<{
+    property: string;
+    name: string;
+    old_value?: string;
+    new_value?: string;
+  }>;
+}
+
+interface RedmineRelation {
+  id: number;
+  issue_id: number;
+  issue_to_id: number;
+  relation_type: string;
+  delay?: number;
 }
 
 interface RedmineProject {
@@ -123,6 +176,9 @@ export class AppComponent {
   
   selectedFiles: File[] = [];
   uploadedFiles: RedmineUpload[] = [];
+  
+  selectedIssue: RedmineIssue | null = null;
+  showModal = false;
 
   // Filtros de consulta
   filterType: 'author' | 'assigned' | 'all' = 'author';
@@ -145,6 +201,7 @@ export class AppComponent {
   isLoadingCategories = false;
   isLoadingTrackers = false;
   isUploadingFiles = false;
+  isLoadingIssueDetail = false;
   isTesting = false;
   errorMessage = '';
   successMessage = '';
@@ -510,6 +567,48 @@ export class AppComponent {
     if (this.uploadedFiles.length === 0) {
       this.selectedFiles = [];
     }
+  }
+
+  fetchIssueDetail(issueId: number): void {
+    this.resetMessages();
+    if (!this.baseUrl || !this.apiKey) {
+      this.errorMessage = 'Completa baseUrl y apiKey.';
+      return;
+    }
+
+    const url = `${this.normalizeBaseUrl(this.baseUrl)}/issues/${issueId}.json`;
+    const params = new HttpParams()
+      .set('include', 'attachments,journals,watchers,children,relations');
+
+    this.isLoadingIssueDetail = true;
+    this.http
+      .get<RedmineIssueResponse>(url, { headers: this.buildHeaders(), params })
+      .subscribe({
+        next: (response) => {
+          this.selectedIssue = response.issue;
+          this.showModal = true;
+        },
+        error: (error) => {
+          this.isLoadingIssueDetail = false;
+          this.errorMessage = `Error al cargar ticket #${issueId}: ${this.toErrorMessage(error)}`;
+        },
+        complete: () => {
+          this.isLoadingIssueDetail = false;
+        },
+      });
+  }
+
+  closeModal(): void {
+    this.showModal = false;
+    this.selectedIssue = null;
+  }
+
+  formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   }
 
   private buildHeaders(): HttpHeaders {

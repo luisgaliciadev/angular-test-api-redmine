@@ -405,19 +405,29 @@
       <article class="issue" *ngFor="let issue of issues">
         <div class="issue__header">
           <strong>#{{ issue.id }} - {{ issue.subject }}</strong>
-          <span
-            class="status"
-            [class.status--open]="
-              (issue.status?.name?.toLowerCase() || '').includes('new') ||
-              (issue.status?.name?.toLowerCase() || '').includes('open')
-            "
-            [class.status--closed]="
-              (issue.status?.name?.toLowerCase() || '').includes('closed') ||
-              (issue.status?.name?.toLowerCase() || '').includes('resolved')
-            "
-          >
-            {{ issue.status?.name || "Sin estado" }}
-          </span>
+          <div class="issue__actions">
+            <button 
+              class="detail-btn" 
+              (click)="fetchIssueDetail(issue.id)" 
+              [disabled]="isLoadingIssueDetail"
+              title="Ver detalles"
+            >
+              🔍
+            </button>
+            <span
+              class="status"
+              [class.status--open]="
+                (issue.status?.name?.toLowerCase() || '').includes('new') ||
+                (issue.status?.name?.toLowerCase() || '').includes('open')
+              "
+              [class.status--closed]="
+                (issue.status?.name?.toLowerCase() || '').includes('closed') ||
+                (issue.status?.name?.toLowerCase() || '').includes('resolved')
+              "
+            >
+              {{ issue.status?.name || "Sin estado" }}
+            </span>
+          </div>
         </div>
         <p class="issue__description" *ngIf="issue.description">
           {{ issue.description }}
@@ -447,4 +457,173 @@
       <p>📭 No se encontraron tickets con los filtros aplicados.</p>
     </div>
   </section>
+</div>
+
+<!-- Modal de detalle de ticket -->
+<div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
+  <div class="modal" (click)="$event.stopPropagation()" *ngIf="selectedIssue">
+    <div class="modal__header">
+      <h2>Ticket #{{ selectedIssue.id }}</h2>
+      <button class="close-btn" (click)="closeModal()">✖</button>
+    </div>
+
+    <div class="modal__body">
+      <!-- Información básica -->
+      <section class="modal-section">
+        <h3>Información básica</h3>
+        <div class="info-grid">
+          <div class="info-item">
+            <strong>Subject:</strong>
+            <span>{{ selectedIssue.subject }}</span>
+          </div>
+          <div class="info-item">
+            <strong>Estado:</strong>
+            <span class="badge badge--status">{{ selectedIssue.status?.name || 'N/A' }}</span>
+          </div>
+          <div class="info-item">
+            <strong>Proyecto:</strong>
+            <span>{{ selectedIssue.project?.name || 'N/A' }}</span>
+          </div>
+          <div class="info-item">
+            <strong>Tracker:</strong>
+            <span>{{ selectedIssue.tracker?.name || 'N/A' }}</span>
+          </div>
+          <div class="info-item">
+            <strong>Prioridad:</strong>
+            <span>{{ selectedIssue.priority?.name || 'N/A' }}</span>
+          </div>
+          <div class="info-item">
+            <strong>Categoría:</strong>
+            <span>{{ selectedIssue.category?.name || 'N/A' }}</span>
+          </div>
+          <div class="info-item">
+            <strong>Autor:</strong>
+            <span>{{ selectedIssue.author?.name || 'N/A' }}</span>
+          </div>
+          <div class="info-item">
+            <strong>Asignado a:</strong>
+            <span>{{ selectedIssue.assigned_to?.name || 'Sin asignar' }}</span>
+          </div>
+          <div class="info-item">
+            <strong>Creado:</strong>
+            <span>{{ selectedIssue.created_on | date: 'medium' }}</span>
+          </div>
+          <div class="info-item">
+            <strong>Actualizado:</strong>
+            <span>{{ selectedIssue.updated_on | date: 'medium' }}</span>
+          </div>
+          <div class="info-item" *ngIf="selectedIssue.start_date">
+            <strong>Fecha inicio:</strong>
+            <span>{{ selectedIssue.start_date | date: 'short' }}</span>
+          </div>
+          <div class="info-item" *ngIf="selectedIssue.due_date">
+            <strong>Fecha fin:</strong>
+            <span>{{ selectedIssue.due_date | date: 'short' }}</span>
+          </div>
+          <div class="info-item" *ngIf="selectedIssue.estimated_hours">
+            <strong>Horas estimadas:</strong>
+            <span>{{ selectedIssue.estimated_hours }}h</span>
+          </div>
+          <div class="info-item" *ngIf="selectedIssue.spent_hours">
+            <strong>Horas gastadas:</strong>
+            <span>{{ selectedIssue.spent_hours }}h</span>
+          </div>
+          <div class="info-item" *ngIf="selectedIssue.done_ratio !== undefined">
+            <strong>% Completado:</strong>
+            <span>{{ selectedIssue.done_ratio }}%</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Descripción -->
+      <section class="modal-section" *ngIf="selectedIssue.description">
+        <h3>Descripción</h3>
+        <div class="description-box">
+          {{ selectedIssue.description }}
+        </div>
+      </section>
+
+      <!-- Adjuntos -->
+      <section class="modal-section" *ngIf="selectedIssue.attachments && selectedIssue.attachments.length > 0">
+        <h3>Archivos adjuntos ({{ selectedIssue.attachments.length }})</h3>
+        <div class="attachments-list">
+          <div class="attachment-item" *ngFor="let attachment of selectedIssue.attachments">
+            <div class="attachment-icon">📄</div>
+            <div class="attachment-info">
+              <a [href]="attachment.content_url" target="_blank" class="attachment-name">
+                {{ attachment.filename }}
+              </a>
+              <div class="attachment-meta">
+                <span>{{ formatFileSize(attachment.filesize) }}</span>
+                <span>•</span>
+                <span>{{ attachment.author.name }}</span>
+                <span>•</span>
+                <span>{{ attachment.created_on | date: 'short' }}</span>
+              </div>
+              <p class="attachment-description" *ngIf="attachment.description">
+                {{ attachment.description }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Observadores -->
+      <section class="modal-section" *ngIf="selectedIssue.watchers && selectedIssue.watchers.length > 0">
+        <h3>Observadores ({{ selectedIssue.watchers.length }})</h3>
+        <div class="watchers-list">
+          <span class="watcher-badge" *ngFor="let watcher of selectedIssue.watchers">
+            👁️ {{ watcher.name }}
+          </span>
+        </div>
+      </section>
+
+      <!-- Subtareas -->
+      <section class="modal-section" *ngIf="selectedIssue.children && selectedIssue.children.length > 0">
+        <h3>Subtareas ({{ selectedIssue.children.length }})</h3>
+        <div class="children-list">
+          <div class="child-item" *ngFor="let child of selectedIssue.children">
+            <strong>#{{ child.id }}</strong>
+            <span>{{ child.subject }}</span>
+            <span class="badge badge--small">{{ child.status?.name }}</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Historial (Journals) -->
+      <section class="modal-section" *ngIf="selectedIssue.journals && selectedIssue.journals.length > 0">
+        <h3>Historial ({{ selectedIssue.journals.length }} entradas)</h3>
+        <div class="journals-list">
+          <div class="journal-item" *ngFor="let journal of selectedIssue.journals">
+            <div class="journal-header">
+              <strong>{{ journal.user.name }}</strong>
+              <span class="journal-date">{{ journal.created_on | date: 'medium' }}</span>
+            </div>
+            <div class="journal-notes" *ngIf="journal.notes">
+              {{ journal.notes }}
+            </div>
+            <div class="journal-details" *ngIf="journal.details && journal.details.length > 0">
+              <div class="detail-change" *ngFor="let detail of journal.details">
+                <strong>{{ detail.name }}</strong> cambió de 
+                <span class="old-value">{{ detail.old_value || '(vacío)' }}</span> a 
+                <span class="new-value">{{ detail.new_value || '(vacío)' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Relaciones -->
+      <section class="modal-section" *ngIf="selectedIssue.relations && selectedIssue.relations.length > 0">
+        <h3>Relaciones ({{ selectedIssue.relations.length }})</h3>
+        <div class="relations-list">
+          <div class="relation-item" *ngFor="let relation of selectedIssue.relations">
+            <span class="badge badge--relation">{{ relation.relation_type }}</span>
+            <span>Issue #{{ relation.issue_to_id }}</span>
+            <span *ngIf="relation.delay">Delay: {{ relation.delay }} días</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
 </div>
