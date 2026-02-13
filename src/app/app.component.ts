@@ -57,6 +57,16 @@ interface RedmineUsersResponse {
   limit: number;
 }
 
+interface RedminePriority {
+  id: number;
+  name: string;
+  is_default?: boolean;
+}
+
+interface RedminePrioritiesResponse {
+  issue_priorities: RedminePriority[];
+}
+
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -72,6 +82,7 @@ export class AppComponent {
   subject = '';
   description = '';
   assignedToId = '';
+  priorityId = '';
 
   // Filtros de consulta
   filterType: 'author' | 'assigned' | 'all' = 'author';
@@ -83,10 +94,12 @@ export class AppComponent {
   issues: RedmineIssue[] = [];
   projects: RedmineProject[] = [];
   users: RedmineUser[] = [];
+  priorities: RedminePriority[] = [];
   isCreating = false;
   isLoading = false;
   isLoadingProjects = false;
   isLoadingUsers = false;
+  isLoadingPriorities = false;
   isTesting = false;
   errorMessage = '';
   successMessage = '';
@@ -151,6 +164,10 @@ export class AppComponent {
       issuePayload['assigned_to_id'] = this.assignedToId;
     }
 
+    if (this.priorityId) {
+      issuePayload['priority_id'] = this.priorityId;
+    }
+
     this.isCreating = true;
     this.http
       .post(url, { issue: issuePayload }, { headers: this.buildHeaders() })
@@ -160,6 +177,7 @@ export class AppComponent {
           this.subject = '';
           this.description = '';
           this.assignedToId = '';
+          this.priorityId = '';
         },
         error: (error) => {
           this.errorMessage = this.toErrorMessage(error);
@@ -265,6 +283,33 @@ export class AppComponent {
         },
         complete: () => {
           this.isLoadingUsers = false;
+        },
+      });
+  }
+
+  fetchPriorities(): void {
+    this.resetMessages();
+    if (!this.baseUrl || !this.apiKey) {
+      this.errorMessage = 'Completa baseUrl y apiKey.';
+      return;
+    }
+
+    const url = `${this.normalizeBaseUrl(this.baseUrl)}/enumerations/issue_priorities.json`;
+
+    this.isLoadingPriorities = true;
+    this.http
+      .get<RedminePrioritiesResponse>(url, { headers: this.buildHeaders() })
+      .subscribe({
+        next: (response) => {
+          this.priorities = response.issue_priorities || [];
+          this.successMessage = `Se encontraron ${this.priorities.length} prioridades.`;
+        },
+        error: (error) => {
+          this.isLoadingPriorities = false;
+          this.errorMessage = this.toErrorMessage(error);
+        },
+        complete: () => {
+          this.isLoadingPriorities = false;
         },
       });
   }

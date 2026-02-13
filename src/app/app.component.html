@@ -121,6 +121,34 @@
   </section>
 
   <section class="card">
+    <h2>Prioridades disponibles</h2>
+    <p>Consulta las prioridades disponibles para asignar a los tickets.</p>
+    
+    <button class="secondary" (click)="fetchPriorities()" [disabled]="isLoadingPriorities">
+      {{ isLoadingPriorities ? "Cargando..." : "⚡ Listar prioridades" }}
+    </button>
+
+    <div class="messages">
+      <p class="error" *ngIf="errorMessage && !priorities.length">{{ errorMessage }}</p>
+      <p class="success" *ngIf="successMessage && priorities.length">{{ successMessage }}</p>
+    </div>
+
+    <div class="list" *ngIf="priorities.length">
+      <article class="priority" *ngFor="let priority of priorities">
+        <div class="priority__header">
+          <strong>{{ priority.name }}</strong>
+          <span class="badge">ID: {{ priority.id }}</span>
+          <span class="badge badge--default" *ngIf="priority.is_default">Por defecto</span>
+        </div>
+      </article>
+    </div>
+
+    <div class="no-results" *ngIf="!isLoadingPriorities && priorities.length === 0 && successMessage">
+      <p>📭 No se encontraron prioridades disponibles.</p>
+    </div>
+  </section>
+
+  <section class="card">
     <h2>Registrar ticket</h2>
     <div class="grid">
       <label>
@@ -140,6 +168,16 @@
           placeholder="ID del usuario"
           name="assignedToId"
         />
+      </label>
+      <label>
+        Prioridad (opcional)
+        <select [(ngModel)]="priorityId" name="priorityId">
+          <option value="">-- Selecciona una prioridad --</option>
+          <option *ngFor="let priority of priorities" [value]="priority.id">
+            {{ priority.name }}{{ priority.is_default ? ' (Por defecto)' : '' }}
+          </option>
+        </select>
+        <small *ngIf="!priorities.length">Haz clic en "⚡ Listar prioridades" para cargar las opciones</small>
       </label>
       <label class="span-2">
         Subject
