@@ -4,6 +4,14 @@ import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 interface RedmineUser {
   id: number;
   name: string;
+  login?: string;
+  firstname?: string;
+  lastname?: string;
+  mail?: string;
+  created_on?: string;
+  updated_on?: string;
+  last_login_on?: string;
+  status?: number;
 }
 
 interface RedmineIssue {
@@ -24,6 +32,31 @@ interface RedmineIssuesResponse {
   limit: number;
 }
 
+interface RedmineProject {
+  id: number;
+  name: string;
+  identifier: string;
+  description?: string;
+  status?: number;
+  is_public?: boolean;
+  created_on?: string;
+  updated_on?: string;
+}
+
+interface RedmineProjectsResponse {
+  projects: RedmineProject[];
+  total_count: number;
+  offset: number;
+  limit: number;
+}
+
+interface RedmineUsersResponse {
+  users: RedmineUser[];
+  total_count: number;
+  offset: number;
+  limit: number;
+}
+
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -32,8 +65,8 @@ interface RedmineIssuesResponse {
 export class AppComponent {
   title = 'testApiRedmine';
 
-  baseUrl = '';
-  apiKey = '';
+  baseUrl = '/api';
+  apiKey = 'e997bd5681f236c727b306d2ca94d7998f3dc9b0';
 
   projectId = '';
   subject = '';
@@ -48,8 +81,12 @@ export class AppComponent {
   limit = 25;
 
   issues: RedmineIssue[] = [];
+  projects: RedmineProject[] = [];
+  users: RedmineUser[] = [];
   isCreating = false;
   isLoading = false;
+  isLoadingProjects = false;
+  isLoadingUsers = false;
   isTesting = false;
   errorMessage = '';
   successMessage = '';
@@ -66,7 +103,8 @@ export class AppComponent {
       return;
     }
 
-    const url = `${this.normalizeBaseUrl(this.baseUrl)}/users/current.json`;
+    // const url = `${this.normalizeBaseUrl(this.baseUrl)}`;
+    const url = `${this.normalizeBaseUrl(this.baseUrl)}/projects.json`;
 
     this.isTesting = true;
     this.http
@@ -80,6 +118,7 @@ export class AppComponent {
           this.connectionInfo = `Usuario: ${user.name || 'N/A'} (ID: ${user.id})${user.login ? ' - Login: ' + user.login : ''}${user.mail ? ' - Email: ' + user.mail : ''}`;
         },
         error: (error) => {
+          this.isTesting = false;
           this.errorMessage = '❌ ' + this.toErrorMessage(error);
           if (error?.status === 401) {
             this.errorMessage = '❌ API Key inválida o sin permisos.';
@@ -171,6 +210,61 @@ export class AppComponent {
         },
         complete: () => {
           this.isLoading = false;
+        },
+      });
+  }
+
+  fetchProjects(): void {
+    this.resetMessages();
+    if (!this.baseUrl || !this.apiKey) {
+      this.errorMessage = 'Completa baseUrl y apiKey.';
+      return;
+    }
+
+    const url = `${this.normalizeBaseUrl(this.baseUrl)}/projects.json`;
+    const params = new HttpParams().set('limit', '100');
+
+    this.isLoadingProjects = true;
+    this.http
+      .get<RedmineProjectsResponse>(url, { headers: this.buildHeaders(), params })
+      .subscribe({
+        next: (response) => {
+          this.projects = response.projects || [];
+          this.successMessage = `Se encontraron ${response.total_count} proyectos.`;
+        },
+        error: (error) => {
+          this.errorMessage = this.toErrorMessage(error);
+        },
+        complete: () => {
+          this.isLoadingProjects = false;
+        },
+      });
+  }
+
+  fetchUsers(): void {
+    this.resetMessages();
+    if (!this.baseUrl || !this.apiKey) {
+      this.errorMessage = 'Completa baseUrl y apiKey.';
+      return;
+    }
+
+    const url = `${this.normalizeBaseUrl(this.baseUrl)}/users.json`;
+    const params = new HttpParams().set('limit', '100');
+
+    this.isLoadingUsers = true;
+    this.http
+      .get<RedmineUsersResponse>(url, { headers: this.buildHeaders(), params })
+      .subscribe({
+        next: (response) => {
+          this.users = response.users || [];
+          this.successMessage = `Se encontraron ${response.total_count} usuarios.`;
+        },
+        error: (error) => {
+          this.isLoadingUsers = false;
+          this.errorMessage = this.toErrorMessage(error);
+        },
+        complete: () => {
+          this.isLoadingUsers = false;
         },
       });
   }

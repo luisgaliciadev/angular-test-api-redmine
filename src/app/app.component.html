@@ -14,12 +14,13 @@
           [(ngModel)]="baseUrl"
           placeholder="https://redmine.tu-dominio.com"
           name="baseUrl"
+          value="http://localhost:3000/issues.json"
         />
       </label>
       <label>
         API Key
         <input
-          type="password"
+          type="text"
           [(ngModel)]="apiKey"
           placeholder="X-Redmine-API-Key"
           name="apiKey"
@@ -36,6 +37,86 @@
       <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
       <p class="success" *ngIf="successMessage">{{ successMessage }}</p>
       <p class="info" *ngIf="connectionInfo">{{ connectionInfo }}</p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Proyectos disponibles</h2>
+    <p>Consulta los proyectos para obtener el ID o identifier que necesitas.</p>
+    
+    <button class="secondary" (click)="fetchProjects()" [disabled]="isLoadingProjects">
+      {{ isLoadingProjects ? "Cargando..." : "📋 Listar proyectos" }}
+    </button>
+
+    <div class="messages">
+      <p class="error" *ngIf="errorMessage && !projects.length">{{ errorMessage }}</p>
+      <p class="success" *ngIf="successMessage && projects.length">{{ successMessage }}</p>
+    </div>
+
+    <div class="list" *ngIf="projects.length">
+      <article class="project" *ngFor="let project of projects">
+        <div class="project__header">
+          <strong>{{ project.name }}</strong>
+          <span class="badge">ID: {{ project.id }}</span>
+        </div>
+        <div class="project__details">
+          <span><strong>Identifier:</strong> <code>{{ project.identifier }}</code></span>
+          <span *ngIf="project.status !== undefined">
+            <strong>Estado:</strong> {{ project.status === 1 ? 'Activo' : 'Cerrado' }}
+          </span>
+          <span *ngIf="project.is_public !== undefined">
+            {{ project.is_public ? '🌐 Público' : '🔒 Privado' }}
+          </span>
+        </div>
+        <p class="project__description" *ngIf="project.description">
+          {{ project.description }}
+        </p>
+      </article>
+    </div>
+
+    <div class="no-results" *ngIf="!isLoadingProjects && projects.length === 0 && successMessage">
+      <p>📭 No se encontraron proyectos disponibles.</p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Usuarios disponibles</h2>
+    <p>Consulta los usuarios para obtener el ID que necesitas para asignar tickets.</p>
+    
+    <button class="secondary" (click)="fetchUsers()" [disabled]="isLoadingUsers">
+      {{ isLoadingUsers ? "Cargando..." : "👥 Listar usuarios" }}
+    </button>
+
+    <div class="messages">
+      <p class="error" *ngIf="errorMessage && !users.length">{{ errorMessage }}</p>
+      <p class="success" *ngIf="successMessage && users.length">{{ successMessage }}</p>
+    </div>
+
+    <div class="list" *ngIf="users.length">
+      <article class="user" *ngFor="let user of users">
+        <div class="user__header">
+          <strong>{{ user.name }}</strong>
+          <span class="badge">ID: {{ user.id }}</span>
+        </div>
+        <div class="user__details">
+          <span *ngIf="user.login"><strong>Login:</strong> <code>{{ user.login }}</code></span>
+          <span *ngIf="user.mail"><strong>Email:</strong> {{ user.mail }}</span>
+          <span *ngIf="user.status !== undefined">
+            <strong>Estado:</strong> 
+            <span [class.user-status--active]="user.status === 1" [class.user-status--locked]="user.status === 3">
+              {{ user.status === 1 ? '✅ Activo' : user.status === 3 ? '🔒 Bloqueado' : 'Inactivo' }}
+            </span>
+          </span>
+        </div>
+        <div class="user__meta" *ngIf="user.created_on || user.last_login_on">
+          <span *ngIf="user.created_on"><strong>Creado:</strong> {{ user.created_on | date: 'short' }}</span>
+          <span *ngIf="user.last_login_on"><strong>Último login:</strong> {{ user.last_login_on | date: 'short' }}</span>
+        </div>
+      </article>
+    </div>
+
+    <div class="no-results" *ngIf="!isLoadingUsers && users.length === 0 && successMessage">
+      <p>📭 No se encontraron usuarios disponibles.</p>
     </div>
   </section>
 
