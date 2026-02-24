@@ -194,7 +194,7 @@ export class AppComponent {
   title = 'testApiRedmine';
 
   baseUrl = '/api';
-  apiKey = 'e997bd5681f236c727b306d2ca94d7998f3dc9b0';
+  apiKey = '680e0d7423d12560cbeb4ade5ce55a48f3652667';
 
   projectId = '';
   subject = '';
@@ -203,10 +203,10 @@ export class AppComponent {
   priorityId = '';
   categoryId = '';
   trackerId = '';
-  
+
   selectedFiles: File[] = [];
   uploadedFiles: RedmineUpload[] = [];
-  
+
   selectedIssue: RedmineIssue | null = null;
   showModal = false;
 
@@ -216,7 +216,7 @@ export class AppComponent {
   filterStatusId = '';
   filterProjectId = '';
   limit = 25;
-  customFieldFilters: Array<{id: string; value: string}> = [];
+  customFieldFilters: Array<{ id: string; value: string }> = [];
 
   issues: RedmineIssue[] = [];
   projects: RedmineProject[] = [];
@@ -227,7 +227,7 @@ export class AppComponent {
   customFields: RedmineCustomField[] = [];
   allCustomFields: RedmineCustomField[] = [];
   customFieldValues: Record<number, any> = {};
-  manualCustomFields: Array<{id: string; value: string}> = [];
+  manualCustomFields: Array<{ id: string; value: string }> = [];
   isCreating = false;
   isLoading = false;
   isLoadingProjects = false;
@@ -316,36 +316,36 @@ export class AppComponent {
     }
 
     if (this.uploadedFiles.length > 0) {
-      issuePayload['uploads'] = this.uploadedFiles.map(file => ({
+      issuePayload['uploads'] = this.uploadedFiles.map((file) => ({
         token: file.token,
         filename: file.filename,
         content_type: file.content_type,
-        description: file.description
+        description: file.description,
       }));
     }
 
     // Agregar custom fields si existen valores
     const customFieldsArray = Object.keys(this.customFieldValues)
-      .filter(key => {
+      .filter((key) => {
         const value = this.customFieldValues[parseInt(key)];
         return value !== undefined && value !== '' && value !== null;
       })
-      .map(key => ({
+      .map((key) => ({
         id: parseInt(key),
-        value: this.customFieldValues[parseInt(key)]
+        value: this.customFieldValues[parseInt(key)],
       }));
-    
+
     // Agregar custom fields manuales
     const manualFieldsArray = this.manualCustomFields
-      .filter(field => field.id && field.value)
-      .map(field => ({
+      .filter((field) => field.id && field.value)
+      .map((field) => ({
         id: parseInt(field.id),
-        value: field.value
+        value: field.value,
       }));
-    
+
     // Combinar ambos arrays de custom fields
     const allCustomFieldsArray = [...customFieldsArray, ...manualFieldsArray];
-    
+
     if (allCustomFieldsArray.length > 0) {
       issuePayload['custom_fields'] = allCustomFieldsArray;
     }
@@ -404,7 +404,7 @@ export class AppComponent {
     }
 
     // Filtrar por custom fields
-    this.customFieldFilters.forEach(filter => {
+    this.customFieldFilters.forEach((filter) => {
       if (filter.id && filter.value) {
         params = params.set(`cf_${filter.id}`, filter.value);
       }
@@ -439,7 +439,10 @@ export class AppComponent {
 
     this.isLoadingProjects = true;
     this.http
-      .get<RedmineProjectsResponse>(url, { headers: this.buildHeaders(), params })
+      .get<RedmineProjectsResponse>(url, {
+        headers: this.buildHeaders(),
+        params,
+      })
       .subscribe({
         next: (response) => {
           this.projects = response.projects || [];
@@ -517,7 +520,8 @@ export class AppComponent {
     }
 
     if (!this.projectId) {
-      this.errorMessage = 'Debes seleccionar un proyecto primero para cargar sus categorías.';
+      this.errorMessage =
+        'Debes seleccionar un proyecto primero para cargar sus categorías.';
       return;
     }
 
@@ -530,7 +534,8 @@ export class AppComponent {
         next: (response) => {
           this.categories = response.issue_categories || [];
           if (this.categories.length === 0) {
-            this.successMessage = 'El proyecto no tiene categorías configuradas.';
+            this.successMessage =
+              'El proyecto no tiene categorías configuradas.';
           } else {
             this.successMessage = `Se encontraron ${this.categories.length} categorías.`;
           }
@@ -589,12 +594,16 @@ export class AppComponent {
 
     this.isLoadingCustomFields = true;
     this.http
-      .get<RedmineProjectWithCustomFields>(url, { headers: this.buildHeaders(), params })
+      .get<RedmineProjectWithCustomFields>(url, {
+        headers: this.buildHeaders(),
+        params,
+      })
       .subscribe({
         next: (response) => {
           this.customFields = response.project.issue_custom_fields || [];
           if (this.customFields.length === 0) {
-            this.successMessage = 'El proyecto no tiene campos personalizados configurados.';
+            this.successMessage =
+              'El proyecto no tiene campos personalizados configurados.';
           } else {
             this.successMessage = `Se encontraron ${this.customFields.length} campos personalizados.`;
           }
@@ -625,7 +634,8 @@ export class AppComponent {
         next: (response) => {
           this.allCustomFields = response.custom_fields || [];
           if (this.allCustomFields.length === 0) {
-            this.successMessage = 'No se encontraron campos personalizados en el sistema.';
+            this.successMessage =
+              'No se encontraron campos personalizados en el sistema.';
           } else {
             this.successMessage = `Se encontraron ${this.allCustomFields.length} campos personalizados en total.`;
           }
@@ -670,7 +680,7 @@ export class AppComponent {
       reader.onload = () => {
         const arrayBuffer = reader.result as ArrayBuffer;
         const url = `${this.normalizeBaseUrl(this.baseUrl)}/uploads.json`;
-        
+
         const headers = new HttpHeaders({
           'Content-Type': 'application/octet-stream',
           'X-Redmine-API-Key': this.apiKey,
@@ -717,8 +727,10 @@ export class AppComponent {
     }
 
     const url = `${this.normalizeBaseUrl(this.baseUrl)}/issues/${issueId}.json`;
-    const params = new HttpParams()
-      .set('include', 'attachments,journals,watchers,children,relations');
+    const params = new HttpParams().set(
+      'include',
+      'attachments,journals,watchers,children,relations',
+    );
 
     this.isLoadingIssueDetail = true;
     this.http
@@ -748,7 +760,7 @@ export class AppComponent {
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   }
 
   isArrayValue(value: any): boolean {
